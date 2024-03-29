@@ -1,5 +1,7 @@
 package chaos.gabinator
 
+import android.content.Context
+import android.hardware.usb.UsbManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,12 +19,20 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             GabinatorTheme {
-                // A surface container using the 'background' color from the theme
+                // Cambiar el modo de host a accesorio
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Greeting("Android")
+                    val DeviceMan = getSystemService(Context.USB_SERVICE) as UsbManager
+                    val DeviceList = DeviceMan.deviceList
+                    val DeviceIt = DeviceList.values.iterator()
+                    Greeting(DeviceList.size.toString())
+                    while (DeviceIt.hasNext()) {
+                        val dev = DeviceIt.next()
+                        val nom = dev.deviceName
+                        Greeting(nom)
+                    }
                 }
             }
         }
