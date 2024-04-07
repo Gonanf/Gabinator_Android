@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.jetbrainsKotlinAndroid)
 }
+
 android {
     namespace = "chaos.gabinator"
     compileSdk = 34
