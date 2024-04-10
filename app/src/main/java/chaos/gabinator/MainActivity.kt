@@ -30,40 +30,7 @@ var IS: FileInputStream? = null
 var OS: FileOutputStream? = null
 var device: UsbAccessory? = null
 var runned = false
-var th: Thread = Thread(MainActivity.GetData())
 class MainActivity : ComponentActivity() {
-
-    class GetData: Runnable{
-        override fun run() {
-            var lastIOExeption : IOException? = null
-            while (true){
-                try {
-                    if (IS != null){
-
-                        val disp = IS!!.available()
-                        Mensaje += disp.toString() + "\n"
-                        if (disp > 0){
-                            var buf = ByteArray(disp)
-                            val r = IS!!.read(buf,0,disp)
-                            Mensaje += buf.toString() + "\n"
-                            break
-                        }
-
-                    }
-                    else{
-                        Mensaje += "IS == NULL\n"
-                    }
-
-                }
-                catch (error: IOException){
-                        if (lastIOExeption != error){
-                            Mensaje += error.message + "\n"
-                        }
-                }
-            }
-        }
-
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -114,18 +81,6 @@ class MainActivity : ComponentActivity() {
                 tex.text = Mensaje
 
                 when (intent?.action) {
-                    UsbManager.ACTION_USB_ACCESSORY_ATTACHED -> {
-                        // USB device attached
-                        Mensaje += "Attached\n"
-                        device = intent.getParcelableExtra(UsbManager.EXTRA_ACCESSORY)
-                        if (device != null) {
-                            Log.d(TAG, "USB RECEIVER Attached: ${device!!.manufacturer}")
-                            Mensaje += device!!.model + " attached\n"
-                        }
-                        tex.text = Mensaje
-
-                    }
-
                     UsbManager.ACTION_USB_ACCESSORY_DETACHED -> {
                         // USB device detached
                         Mensaje += "Detached\n"
@@ -134,12 +89,6 @@ class MainActivity : ComponentActivity() {
                             if (tempdevice!!.model == device!!.model){
                                 Log.d(TAG, "USB RECEIVER Detached: ${tempdevice!!.manufacturer}")
                                 Mensaje += device!!.model + " detached\n"
-                                device = null
-                                HasPermisions = false
-                                runned = false
-                                IS = null
-                                OS = null
-                                th.join()
                             }
                         }
                         tex.text = Mensaje
@@ -157,8 +106,25 @@ class MainActivity : ComponentActivity() {
                                 IS = FileInputStream(tempFD)
                                 OS = FileOutputStream(tempFD)
                                 Mensaje += device?.model + "\n"
-                                th.start()
-                                th.join()
+                                Mensaje += "Starting Thread\n"
+                                val meg = Thread {
+                                    Mensaje += "Trhead started\n"
+                                    while (true){
+                                        if (IS != null){
+                                            var buf = ByteArray(700000)
+                                            val r = IS!!.read(buf,0,700000)
+                                            Mensaje += buf.toString() + "\n"
+                                            break
+                                        }
+                                        else{
+                                            Mensaje += "IS == NULL\n"
+                                        }
+                                        tex.text = Mensaje
+                                    }
+                                }
+                                tex.text = Mensaje
+                                
+                                meg.start()
                             }
                             if (FD == null){
                                 Mensaje += "failed opening File Descriptor\nRunner: " + runned.toString() + "\n"
