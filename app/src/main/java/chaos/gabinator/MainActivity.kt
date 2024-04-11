@@ -6,22 +6,33 @@ import android.content.ContentValues.TAG
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.drawable.Drawable
 import android.hardware.usb.UsbAccessory
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
 import android.os.Bundle
+import android.os.Handler
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.ComponentActivity
+import com.google.firebase.crashlytics.buildtools.reloc.org.apache.commons.io.IOUtils
+import java.io.ByteArrayOutputStream
 import java.io.FileDescriptor
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
+import java.nio.BufferUnderflowException
+import java.nio.ByteBuffer
 import kotlin.concurrent.thread
+import kotlin.math.log
 
-
+var bt: Bitmap? = null
 var Mensaje: String = ""
 var usbManager : UsbManager? = null
 var HasPermisions = false
@@ -30,6 +41,8 @@ var IS: FileInputStream? = null
 var OS: FileOutputStream? = null
 var device: UsbAccessory? = null
 var runned = false
+var UIDelay = 1
+var UIHandle = Handler()
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,8 +52,7 @@ class MainActivity : ComponentActivity() {
         usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
         Connect()
         var Inter: Intent = Intent("com.android.example.USB_PERMISSION")
-        val PI : PendingIntent = PendingIntent.getBroadcast(this,0,Inter,
-            PendingIntent.FLAG_IMMUTABLE)
+        val PI : PendingIntent = PendingIntent.getBroadcast(this,0,Inter,PendingIntent.FLAG_IMMUTABLE)
     }
 
     override fun onResume() {
@@ -59,13 +71,21 @@ class MainActivity : ComponentActivity() {
             else{
                 Mensaje += "Tengo permisos\n"
                 Mensaje += device?.model + "\n"
+
             }
             tex.text = Mensaje
 
         }
     }
+    var m = false
 
-
+    fun ByteArrayToInt(buffer: ByteArray) : Int{
+        var offset: Int = 0
+        return (buffer[offset++].toInt() and 0xff shl 24) or
+                (buffer[offset++].toInt() and 0xff shl 16) or
+                (buffer[offset++].toInt() and 0xff shl 8) or
+                (buffer[offset].toInt() and 0xff)
+    }
     private fun Connect() {
         val tex: TextView = findViewById(R.id.Consola)
         Mensaje += "Escuchando\n"
@@ -107,24 +127,70 @@ class MainActivity : ComponentActivity() {
                                 OS = FileOutputStream(tempFD)
                                 Mensaje += device?.model + "\n"
                                 Mensaje += "Starting Thread\n"
+                                UIHandle.postDelayed(object: Runnable{
+                                    override fun run(){
+                                        val image = findViewById<ImageView>(R.id.IMG)
+                                        if (bt != null){
+                                            image.setImageBitmap(bt)
+                                        }
+                                        tex.text = Mensaje
+                                        UIHandle.postDelayed(this, UIDelay.toLong())
+                                    }
+                                } ,UIDelay.toLong())
+                                /*thread {
+                                    val image = findViewById<ImageView>(R.id.IMG)
+                                    while (true){
+                                    if (IS != null && HasPermisions) {
+                                        println("InputStream not null")
+                                        bt = BitmapFactory.decodeStream(IS!!)
+                                        println("Created bitmap")
+                                        if (bt != null) {
+                                            Mensaje += "Ajustando con bitmap\n"
+                                            image.setImageBitmap(bt)
+                                        } else {
+                                            Mensaje += "Not getting data\n"
+                                            image.setImageResource(R.drawable.ic_launcher_foreground)
+                                        }
+                                    } }}.start()*/
+
                                 val meg = Thread {
                                     Mensaje += "Trhead started\n"
                                     while (true){
                                         if (IS != null){
-                                            var buf = ByteArray(700000)
-                                            val r = IS!!.read(buf,0,700000)
-                                            Mensaje += buf.toString() + "\n"
-                                            break
+                                            try {
+                                                val by = ByteArray(8)
+                                                IS!!.read(by,0,8)
+                                                try {
+                                                    var size = ByteBuffer.wrap(by).getLong()
+                                                }
+                                                catch (io: BufferUnderflowException){
+                                                    Mensaje += "Error underflos\n"
+                                                    continue
+                                                }
+                                                var size = 700000
+                                                Mensaje += size.toString() + "\n"
+                                                    var byt = ByteArray(size.toInt())
+                                                    IS!!.read(byt,0,size.toInt())
+                                                    bt = BitmapFactory.decodeByteArray(byt,0,size.toInt())
+                                                    if (bt != null){
+                                                        Mensaje += "Logrado\n"
+                                                    }
+                                            }
+                                            catch (io: IOException){
+                                                Mensaje += io.message + "\n"
+                                            }
+
                                         }
                                         else{
                                             Mensaje += "IS == NULL\n"
                                         }
-                                        tex.text = Mensaje
                                     }
                                 }
-                                tex.text = Mensaje
-                                
+
                                 meg.start()
+
+
+
                             }
                             if (FD == null){
                                 Mensaje += "failed opening File Descriptor\nRunner: " + runned.toString() + "\n"
