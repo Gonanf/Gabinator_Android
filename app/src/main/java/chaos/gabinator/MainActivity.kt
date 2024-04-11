@@ -27,10 +27,15 @@ import java.io.FileDescriptor
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
+import java.lang.NumberFormatException
 import java.nio.BufferUnderflowException
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.nio.charset.StandardCharsets
+import java.util.Arrays
 import kotlin.concurrent.thread
 import kotlin.math.log
+import java.util.Arrays.copyOf
 
 var bt: Bitmap? = null
 var Mensaje: String = ""
@@ -38,7 +43,7 @@ var usbManager : UsbManager? = null
 var HasPermisions = false
 var FD : ParcelFileDescriptor? = null
 var IS: FileInputStream? = null
-var OS: FileOutputStream? = null
+var IST: FileInputStream? = null
 var device: UsbAccessory? = null
 var runned = false
 var UIDelay = 1
@@ -76,15 +81,6 @@ class MainActivity : ComponentActivity() {
             tex.text = Mensaje
 
         }
-    }
-    var m = false
-
-    fun ByteArrayToInt(buffer: ByteArray) : Int{
-        var offset: Int = 0
-        return (buffer[offset++].toInt() and 0xff shl 24) or
-                (buffer[offset++].toInt() and 0xff shl 16) or
-                (buffer[offset++].toInt() and 0xff shl 8) or
-                (buffer[offset].toInt() and 0xff)
     }
     private fun Connect() {
         val tex: TextView = findViewById(R.id.Consola)
@@ -124,7 +120,7 @@ class MainActivity : ComponentActivity() {
                                 Mensaje += "Permissions granted\n"
                                 val tempFD : FileDescriptor = FD!!.fileDescriptor
                                 IS = FileInputStream(tempFD)
-                                OS = FileOutputStream(tempFD)
+                                IST = FileInputStream(tempFD)
                                 Mensaje += device?.model + "\n"
                                 Mensaje += "Starting Thread\n"
                                 UIHandle.postDelayed(object: Runnable{
@@ -137,44 +133,24 @@ class MainActivity : ComponentActivity() {
                                         UIHandle.postDelayed(this, UIDelay.toLong())
                                     }
                                 } ,UIDelay.toLong())
-                                /*thread {
-                                    val image = findViewById<ImageView>(R.id.IMG)
-                                    while (true){
-                                    if (IS != null && HasPermisions) {
-                                        println("InputStream not null")
-                                        bt = BitmapFactory.decodeStream(IS!!)
-                                        println("Created bitmap")
-                                        if (bt != null) {
-                                            Mensaje += "Ajustando con bitmap\n"
-                                            image.setImageBitmap(bt)
-                                        } else {
-                                            Mensaje += "Not getting data\n"
-                                            image.setImageResource(R.drawable.ic_launcher_foreground)
-                                        }
-                                    } }}.start()*/
-
                                 val meg = Thread {
                                     Mensaje += "Trhead started\n"
                                     while (true){
                                         if (IS != null){
                                             try {
-                                                val by = ByteArray(8)
-                                                IS!!.read(by,0,8)
-                                                try {
-                                                    var size = ByteBuffer.wrap(by).getLong()
+                                                var by = ByteArray(4)
+                                                val l = IS!!.read(by,0,4)
+                                                var siz: Int = 10000
+                                                try{
+                                                    siz = ByteBuffer.wrap(by).order(ByteOrder.LITTLE_ENDIAN).getInt()
                                                 }
                                                 catch (io: BufferUnderflowException){
-                                                    Mensaje += "Error underflos\n"
-                                                    continue
+                                                    Mensaje += io.message + "\n"
                                                 }
-                                                var size = 700000
-                                                Mensaje += size.toString() + "\n"
-                                                    var byt = ByteArray(size.toInt())
-                                                    IS!!.read(byt,0,size.toInt())
-                                                    bt = BitmapFactory.decodeByteArray(byt,0,size.toInt())
-                                                    if (bt != null){
-                                                        Mensaje += "Logrado\n"
-                                                    }
+                                                Mensaje += siz.toString() + "\n"
+                                                by = ByteArray(100000)
+                                                IST!!.read(by,0,100000)
+
                                             }
                                             catch (io: IOException){
                                                 Mensaje += io.message + "\n"
