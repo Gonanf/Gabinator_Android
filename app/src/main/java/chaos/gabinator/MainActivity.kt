@@ -82,6 +82,7 @@ class MainActivity : ComponentActivity() {
 
         }
     }
+    var offst: Int = 0
     private fun Connect() {
         val tex: TextView = findViewById(R.id.Consola)
         Mensaje += "Escuchando\n"
@@ -138,19 +139,17 @@ class MainActivity : ComponentActivity() {
                                     while (true){
                                         if (IS != null){
                                             try {
-                                                var by = ByteArray(4)
-                                                val l = IS!!.read(by,0,4)
-                                                var siz: Int = 10000
-                                                try{
-                                                    siz = ByteBuffer.wrap(by).order(ByteOrder.LITTLE_ENDIAN).getInt()
-                                                }
-                                                catch (io: BufferUnderflowException){
-                                                    Mensaje += io.message + "\n"
-                                                }
-                                                Mensaje += siz.toString() + "\n"
-                                                by = ByteArray(100000)
-                                                IST!!.read(by,0,100000)
 
+                                                var by = ByteArray(4)
+                                                val l = IS!!.read(by,offst,4)
+                                                var siz: Int = 10000
+                                                siz = ByteBuffer.wrap(by).order(ByteOrder.LITTLE_ENDIAN).getInt()
+                                                Mensaje += siz.toString() + "\n"
+                                                /*
+                                                offst = 4
+                                                by = ByteArray(siz)
+                                                IS!!.read(by,offst,siz)*/
+                                                //bt = BitmapFactory.decodeByteArray(by,offst,siz)
                                             }
                                             catch (io: IOException){
                                                 Mensaje += io.message + "\n"
